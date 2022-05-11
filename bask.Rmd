@@ -1,0 +1,147 @@
+---
+title: "Untitled"
+output: html_document
+date: '2022-05-10'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r}
+library(lubridate)
+library(tidyverse)
+library(ggpubr)
+roster95_2022 <- read.csv("C:/Users/Romu/Desktop/Rscrapp_Basket/Roster.csv", sep = ",") #Equipes par saison. De 95 à 2022.
+attach(roster95_2022)
+tibble(roster95_2022)
+skimr::skim(roster95_2022)
+date_etude <- ymd("2022-05-01") # date pour calcul de l'âge
+age <- time_length(interval(bday, date_etude), "years") # calcul de l'âge
+roster_age <- roster95_2022 |> mutate(age = floor(age)) |> mutate(taille = floor(inches*2.54 + feet*30.48)) |> mutate(poids = round(weight/2.2046)) # Calcul âge (entier inférieur), conversion taille en cm et poids en kg
+```
+```{r}
+Linreg <- lm(roster_age$poids ~ roster_age$taille)
+plot(x = roster_age$taille, y = roster_age$poids, xlab = "Taille (cm)", ylab = "Poids (kg)",las = 1,
+              main = "Modélisation du croisement des données - Poids/Taille")
+
+abline(Linreg, lwd=3, col="purple") # Droite des moindres carrées (en violet)
+points(mean(roster_age$taille),mean(roster_age$poids),col="green",pch=15) # Centre du nuage (point vert)
+```
+
+Plus les joueurs sont grands, plus le poids augmente ce qui est "normal", mais nous avons aussi de plus en plus de valeurs supérieures à la droite des moindres carrées.
+
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r}
+R_age_saision <- roster_age |> filter(season == "21/22") # sélection de la saison 21/22
+test <- R_age_saision |> filter(team == "Boston Celtics" | team == "Chicago Bulls" | team == "Philadelphia 76ers" | team == "Los Angeles Lakers" | team == "Detroit Pistons" | team == "San Antonio Spurs" | team =="Minnesota Timberwolves" | team == "Orlando Magic" | team == "New Orleans Pelicans")
+ggplot(test) +
+  aes(x = team_abbr, y = age, fill = team, color = team, options(repr.plot.width = 14, repr.plot.height = 8)) +
+  geom_boxplot(outlier.shape = NA) +
+  geom_jitter() +
+  scale_fill_brewer() +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+
+
+```{r}
+library(ggpubr)
+test2 <- test |> filter(team == "Boston Celtics" | team == "Chicago Bulls" | team == "Philadelphia 76ers")
+
+
+
+
+# Density plot of "Sepal.Length"
+#::::::::::::::::::::::::::::::::::::::
+density.p <- ggdensity(test2, x = "taille", 
+                       fill = "team", palette = "jco")
+# Draw the summary table of Sepal.Length
+#::::::::::::::::::::::::::::::::::::::
+# Compute descriptive statistics by groups
+stable <- desc_statby(test2, measure.var = "taille",
+                      grps = "team")
+stable <- stable[, c("team", "length", "min", "max", "mean", "sd")]
+# Summary table plot, medium orange theme
+stable.p <- ggtexttable(stable, rows = NULL, 
+                        theme = ttheme("mOrange"))
+# Draw text
+#::::::::::::::::::::::::::::::::::::::
+text <- paste("iris data set gives the measurements in cm",
+              "of the variables sepal length and width",
+              "and petal length and width, respectively,",
+              "for 50 flowers from each of 3 species of iris.",
+              "The species are Iris setosa, versicolor, and virginica.", sep = " ")
+text.p <- ggparagraph(text = text, face = "italic", size = 11, color = "black")
+# Arrange the plots on the same page
+ggarrange(density.p, stable.p, text.p, 
+          ncol = 1, nrow = 3,
+          heights = c(1, 0.5, 0.3))
+
+
+
+  # Scatter plot colored by groups ("Species")
+sp <- ggscatter(test2, x = "taille", y = "poids",
+                  color = "team", palette = "jco",
+                  size = 3, alpha = 0.6)+ 
+  border()                                         
+# Marginal density plot of x (top panel) and y (right panel)
+xplot <- ggdensity(test2, "taille", fill = "team",
+                   palette = "jco")
+yplot <- ggdensity(test2, "poids", fill = "team", 
+                   palette = "jco")+
+  rotate()
+# Cleaning the plots
+yplot <- yplot + clean_theme() 
+xplot <- xplot + clean_theme()
+# Arranging the plot
+ggarrange(xplot, NULL, sp, yplot, 
+          ncol = 2, nrow = 2,  align = "hv", 
+          widths = c(2, 1), heights = c(1, 2),
+          common.legend = TRUE)
+
+```
+
+
+```{r}
+library(BasketballAnalyzeR)
+
+# Teams
+str(Tbox)
+data <- data.frame(Tbox[,c(1, 4, 9, 12, 15, 16)])
+labs <- c("% 2-point shots made",
+          "% 3-point shots made",
+          "% free throws made",
+          'Points')
+bubbleplot(data, id="Team", 
+           x="P2p", 
+           y="P3p", 
+           col="FTp",
+           size = 'PTS',
+           labels=labs)
+
+
+
+PbP <- PbPmanipulation(PbP.BDB)
+subdata <- subset(PbP, player=="Stephen Curry")
+subdata$xx <- subdata$original_x/10
+subdata$yy <- subdata$original_y/10-41.75
+
+shotchart(data=subdata, x="xx", y="yy", scatter = F,
+          num.sect = 5,
+          type = 'sectors',
+          z = 'playlength',
+          result = 'result')
+```
+
